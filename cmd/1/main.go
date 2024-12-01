@@ -7,23 +7,13 @@ import (
 	"slices"
 	"strconv"
 	"strings"
+
+	"github.com/bentekkie/advent_of_code_2024/pkg/inputs"
 )
-
-//go:embed input.txt
-var inputtxt string
-
-//go:embed example.txt
-var exampletxt string
-
-var useExample = flag.Bool("use_example", false, "Use the example input")
 
 func main() {
 	flag.Parse()
-	input := inputtxt
-	if *useExample {
-		fmt.Println("Using example input")
-		input = exampletxt
-	}
+	input := inputs.String()
 	part1(input)
 	part2(input)
 }
