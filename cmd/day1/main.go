@@ -2,6 +2,7 @@ package main
 
 import (
 	_ "embed"
+	"flag"
 	"fmt"
 	"slices"
 	"strconv"
@@ -14,8 +15,15 @@ var inputtxt string
 //go:embed example.txt
 var exampletxt string
 
+var useExample = flag.Bool("use_example", false, "Use the example input")
+
 func main() {
+	flag.Parse()
 	input := inputtxt
+	if *useExample {
+		fmt.Println("Using example input")
+		input = exampletxt
+	}
 	part1(input)
 	part2(input)
 }
