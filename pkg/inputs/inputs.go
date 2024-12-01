@@ -11,6 +11,7 @@ import (
 	"runtime"
 	"strconv"
 	"strings"
+	"sync"
 
 	"github.com/bentekkie/advent_of_code_2024/pkg/benlog"
 )
@@ -22,10 +23,13 @@ var (
 	useExample = flag.Bool("use_example", false, "Use the example input")
 )
 
-func findDay() int {
+var findDay = sync.OnceValue(func() int {
 	skip := 0
 	for {
-		_, f, _, _ := runtime.Caller(skip)
+		_, f, _, ok := runtime.Caller(skip)
+		if !ok {
+			benlog.Exitf("Could not find day")
+		}
 		cmdDir := filepath.Base(filepath.Dir(filepath.Dir(f)))
 		if cmdDir == "cmd" {
 			dir := filepath.Base(filepath.Dir(f))
@@ -36,7 +40,7 @@ func findDay() int {
 		}
 		skip++
 	}
-}
+})
 
 func File() fs.File {
 	day := findDay()
