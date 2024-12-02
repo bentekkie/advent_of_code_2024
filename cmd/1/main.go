@@ -4,6 +4,7 @@ import (
 	_ "embed"
 	"flag"
 	"fmt"
+	"iter"
 	"slices"
 	"strconv"
 	"strings"
@@ -13,16 +14,14 @@ import (
 
 func main() {
 	flag.Parse()
-	input := inputs.String()
-	part1(input)
-	part2(input)
+	part1(inputs.Lines())
+	part2(inputs.Lines())
 }
 
-func part1(input string) {
-	lines := strings.Split(input, "\n")
+func part1(lines iter.Seq[string]) {
 	var left []int
 	var right []int
-	for _, line := range lines {
+	for line := range lines {
 		if line == "" {
 			continue
 		}
@@ -46,11 +45,10 @@ func part1(input string) {
 
 }
 
-func part2(input string) {
-	lines := strings.Split(input, "\n")
+func part2(lines iter.Seq[string]) {
 	var left []int
 	var right []int
-	for _, line := range lines {
+	for line := range lines {
 		if line == "" {
 			continue
 		}

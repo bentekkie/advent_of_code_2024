@@ -1,12 +1,14 @@
 package inputs
 
 import (
+	"bufio"
 	"bytes"
 	"embed"
 	"flag"
 	"fmt"
 	"io"
 	"io/fs"
+	"iter"
 	"path/filepath"
 	"runtime"
 	"strconv"
@@ -77,4 +79,20 @@ func Bytes() []byte {
 		benlog.Exitf("%v", err)
 	}
 	return sb.Bytes()
+}
+
+func Lines() iter.Seq[string] {
+	f := File()
+	scanner := bufio.NewScanner(f)
+	return func(yield func(string) bool) {
+		defer f.Close()
+		for scanner.Scan() {
+			if !yield(scanner.Text()) {
+				return
+			}
+		}
+		if err := scanner.Err(); err != nil {
+			benlog.Exitf("%v", err)
+		}
+	}
 }
