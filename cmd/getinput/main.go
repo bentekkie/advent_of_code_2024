@@ -10,6 +10,7 @@ import (
 	"path/filepath"
 	"runtime"
 	"strconv"
+	"time"
 
 	"github.com/bentekkie/advent_of_code_2024/pkg/benlog"
 )
@@ -17,7 +18,7 @@ import (
 //go:embed session.txt
 var sessionCookie string
 
-var day = flag.Int("day", 0, "The day to generate")
+var day = flag.Int("day", -1, "The day to generate")
 
 func main() {
 	flag.Parse()
@@ -25,11 +26,23 @@ func main() {
 		benlog.Exitf("Must specify a day")
 	}
 	_, thisFile, _, _ := runtime.Caller(0)
-	cmdDir := filepath.Dir(filepath.Dir(thisFile))
-	pkgDir := filepath.Join(filepath.Dir(cmdDir), "pkg")
-	puzzleInputsDir := filepath.Join(pkgDir, "inputs", "puzzle_inputs", strconv.Itoa(*day))
+	// ../../../pkg
+	pkgDir := filepath.Join(filepath.Dir(filepath.Dir(filepath.Dir(thisFile))), "pkg")
+	loc, _ := time.LoadLocation("America/Toronto")
+	if *day == -1 {
+		now := time.Now().In(loc)
+		for i := 1; i <= now.Day(); i++ {
+			generateDay(pkgDir, i)
+		}
+	} else {
+		generateDay(pkgDir, *day)
+	}
+}
+
+func generateDay(pkgDir string, day int) {
+	puzzleInputsDir := filepath.Join(pkgDir, "inputs", "puzzle_inputs", strconv.Itoa(day))
 	os.MkdirAll(puzzleInputsDir, 0755)
-	req, err := http.NewRequest("GET", fmt.Sprintf("https://adventofcode.com/2024/day/%d/input", *day), nil)
+	req, err := http.NewRequest("GET", fmt.Sprintf("https://adventofcode.com/2024/day/%d/input", day), nil)
 	if err != nil {
 		benlog.Exitf("%v", err)
 	}
