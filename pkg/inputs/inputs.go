@@ -4,7 +4,6 @@ import (
 	"bufio"
 	"bytes"
 	"embed"
-	"flag"
 	"fmt"
 	"io"
 	"io/fs"
@@ -16,14 +15,11 @@ import (
 	"sync"
 
 	"github.com/bentekkie/advent_of_code_2024/pkg/benlog"
+	"github.com/bentekkie/advent_of_code_2024/pkg/flags"
 )
 
 //go:embed puzzle_inputs/**/*
 var puzzleInputs embed.FS
-
-var (
-	useExample = flag.Bool("use_example", false, "Use the example input")
-)
 
 var findDay = sync.OnceValue(func() int {
 	skip := 0
@@ -47,7 +43,7 @@ var findDay = sync.OnceValue(func() int {
 func File() fs.File {
 	day := findDay()
 
-	if *useExample {
+	if flags.UseExample() {
 		f, err := puzzleInputs.Open(fmt.Sprintf("puzzle_inputs/%d/example.txt", day))
 		if err != nil {
 			benlog.Exitf("%v", err)
