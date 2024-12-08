@@ -4,6 +4,7 @@ import (
 	"flag"
 	"fmt"
 	"iter"
+	"math"
 
 	"github.com/bentekkie/advent_of_code_2024/pkg/inputs"
 )
@@ -16,31 +17,31 @@ func main() {
 
 func part1(grid iter.Seq2[complex128, string]) {
 	annennas := map[string][]complex128{}
-	boundX, boundY := 0, 0
+	var boundX, boundY float64
 	for loc, c := range grid {
 		if c != "." {
 			annennas[c] = append(annennas[c], loc)
 		}
-		if real(loc) > float64(boundX) {
-			boundX = int(real(loc))
+		if real(loc) > boundX {
+			boundX = real(loc)
 		}
-		if imag(loc) > float64(boundY) {
-			boundY = int(imag(loc))
+		if imag(loc) > boundY {
+			boundY = imag(loc)
 		}
+	}
+	inBounds := func(c complex128) bool {
+		return real(c) >= 0 && real(c) <= boundX && imag(c) >= 0 && imag(c) <= boundY
 	}
 	ps := map[complex128]struct{}{}
 	for _, locs := range annennas {
 		for _, locA := range locs {
 			for _, locB := range locs {
 				if locA != locB {
-					diff := locA - locB
-					p1 := locB - diff
-					p2 := locA + diff
-					if real(p1) >= 0 && real(p1) <= float64(boundX) && imag(p1) >= 0 && imag(p1) <= float64(boundY) {
-						ps[p1] = struct{}{}
+					if p := 2*locB - locA; inBounds(p) {
+						ps[p] = struct{}{}
 					}
-					if real(p2) >= 0 && real(p2) <= float64(boundX) && imag(p2) >= 0 && imag(p2) <= float64(boundY) {
-						ps[p2] = struct{}{}
+					if p := 2*locA - locB; inBounds(p) {
+						ps[p] = struct{}{}
 					}
 				}
 			}
@@ -51,20 +52,20 @@ func part1(grid iter.Seq2[complex128, string]) {
 
 func part2(grid iter.Seq2[complex128, string]) {
 	annennas := map[string][]complex128{}
-	boundX, boundY := 0, 0
+	var boundX, boundY float64
 	for loc, c := range grid {
 		if c != "." {
 			annennas[c] = append(annennas[c], loc)
 		}
-		if real(loc) > float64(boundX) {
-			boundX = int(real(loc))
+		if real(loc) > boundX {
+			boundX = real(loc)
 		}
-		if imag(loc) > float64(boundY) {
-			boundY = int(imag(loc))
+		if imag(loc) > boundY {
+			boundY = imag(loc)
 		}
 	}
 	inBounds := func(c complex128) bool {
-		return real(c) >= 0 && real(c) <= float64(boundX) && imag(c) >= 0 && imag(c) <= float64(boundY)
+		return real(c) >= 0 && real(c) <= boundX && imag(c) >= 0 && imag(c) <= boundY
 	}
 	ps := map[complex128]struct{}{}
 	for _, locs := range annennas {
@@ -72,17 +73,11 @@ func part2(grid iter.Seq2[complex128, string]) {
 			for _, locB := range locs {
 				if locA != locB {
 					diff := locA - locB
-					g := GCD(real(diff), imag(diff))
-					diff /= complex(g, 0)
-					p := locB
-					for inBounds(p) {
+					for p := locB; inBounds(p); p += diff {
 						ps[p] = struct{}{}
-						p += diff
 					}
-					p = locB
-					for inBounds(p) {
+					for p := locB; inBounds(p); p -= diff {
 						ps[p] = struct{}{}
-						p -= diff
 					}
 				}
 			}
@@ -91,20 +86,13 @@ func part2(grid iter.Seq2[complex128, string]) {
 	fmt.Printf("Part 1: %d\n", len(ps))
 }
 
-func abs(a int) int {
-	if a < 0 {
-		return -a
-	}
-	return a
-}
-
-func GCD(af, bf float64) float64 {
-	a, b := abs(int(af)), abs(int(bf))
+func GCD(a, b float64) float64 {
+	a, b = math.Abs(a), math.Abs(b)
 	if a == 0 {
-		return bf
+		return b
 	}
 	if b == 0 {
-		return af
+		return a
 	}
 	for a != b {
 		if a > b {
@@ -113,6 +101,5 @@ func GCD(af, bf float64) float64 {
 			b -= a
 		}
 	}
-
-	return float64(a)
+	return a
 }
