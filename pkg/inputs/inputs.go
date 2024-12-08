@@ -92,3 +92,27 @@ func Lines() iter.Seq[string] {
 		}
 	}
 }
+
+func Grid() iter.Seq2[complex128, string] {
+	f := File()
+	scanner := bufio.NewScanner(f)
+	return func(yield func(complex128, string) bool) {
+		defer f.Close()
+		y := 0
+		for scanner.Scan() {
+			line := strings.TrimSpace(scanner.Text())
+			if line == "" {
+				continue
+			}
+			for x, c := range line {
+				if !yield(complex(float64(x), float64(y)), string(c)) {
+					return
+				}
+			}
+			y++
+		}
+		if err := scanner.Err(); err != nil {
+			benlog.Exitf("%v", err)
+		}
+	}
+}
