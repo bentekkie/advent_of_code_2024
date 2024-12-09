@@ -93,24 +93,55 @@ func Lines() iter.Seq[string] {
 	}
 }
 
-func Grid() iter.Seq2[complex128, string] {
+type Grid struct {
+	max complex128
+}
+
+func (g *Grid) Max() complex128 {
+	if g.max != 0 {
+		return g.max
+	}
+	var x, y float64
 	f := File()
 	scanner := bufio.NewScanner(f)
-	return func(yield func(complex128, string) bool) {
+	defer f.Close()
+	for scanner.Scan() {
+		line := strings.TrimSpace(scanner.Text())
+		if line == "" {
+			continue
+		}
+		x = float64(len(line))
+		y++
+	}
+	if err := scanner.Err(); err != nil {
+		benlog.Exitf("%v", err)
+	}
+	g.max = complex(x, y)
+	return g.max
+}
+
+func (g *Grid) Locs() iter.Seq2[complex128, rune] {
+	return func(yield func(complex128, rune) bool) {
+		f := File()
+		scanner := bufio.NewScanner(f)
 		defer f.Close()
-		y := 0
+		var maxX, y float64
 		for scanner.Scan() {
 			line := strings.TrimSpace(scanner.Text())
 			if line == "" {
 				continue
 			}
+			if maxX == 0 {
+				maxX = float64(len(line) - 1)
+			}
 			for x, c := range line {
-				if !yield(complex(float64(x), float64(y)), string(c)) {
+				if !yield(complex(float64(x), y), c) {
 					return
 				}
 			}
 			y++
 		}
+		g.max = complex(maxX, y-1)
 		if err := scanner.Err(); err != nil {
 			benlog.Exitf("%v", err)
 		}
