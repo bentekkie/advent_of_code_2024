@@ -24,12 +24,11 @@ func main() {
 type section struct {
 	prev, next *section
 	id         int
-	count      int
+	count      int8
 }
 
 func part1(input string) {
-	sects := make(map[int]*section, len(input))
-	var prev *section
+	var id0, prev *section
 	for i, c := range input {
 		if c == '\n' {
 			continue
@@ -38,28 +37,29 @@ func part1(input string) {
 		if i%2 == 0 {
 			s := &section{
 				id:    (i / 2),
-				count: num,
+				count: int8(num),
 				prev:  prev,
 			}
 			if s.prev != nil {
 				s.prev.next = s
 			}
 			prev = s
-			sects[s.id] = s
+			if s.id == 0 {
+				id0 = s
+			}
 		} else {
 			s := &section{
 				id:    -1,
-				count: num,
+				count: int8(num),
 				prev:  prev,
 			}
 			if s.prev != nil {
 				s.prev.next = s
 			}
 			prev = s
-			sects[s.id] = s
 		}
 	}
-	left := sects[0]
+	left := id0
 	for left.id != -1 {
 		left = left.next
 	}
@@ -70,23 +70,19 @@ func part1(input string) {
 			continue
 		}
 		if right.count < left.count {
-			oldRight := right
-			oldRightNext := right.next
-			oldRightPrev := right.prev
 			newRight := right.prev
 			for newRight.id == -1 {
 				newRight = newRight.prev
 			}
-			oldLeftPrev := left.prev
-			oldLeftPrev.next = oldRight
-			oldRight.prev = oldLeftPrev
-			left.prev = oldRight
-			left.count -= oldRight.count
-			oldRight.next = left
-			oldRightPrev.next = oldRightNext
-			if oldRightNext != nil {
-				oldRightNext.prev = oldRightPrev
+			left.count -= right.count
+			right.prev.next = right.next
+			if right.next != nil {
+				right.next.prev = right.prev
 			}
+			right.next = left
+			left.prev.next = right
+			right.prev = left.prev
+			left.prev = right
 			right = newRight
 		} else if right.count > left.count {
 			nextLeft := left.next
@@ -125,7 +121,7 @@ func part1(input string) {
 	}
 	pos := 0
 	s := 0
-	curr := sects[0]
+	curr := id0
 	for curr.id != -1 {
 		for range curr.count {
 			s += int(curr.id) * pos
@@ -151,7 +147,7 @@ func printSects(start *section) {
 }
 
 func part2(input string) {
-	sects := make(map[int]*section, len(input))
+	var id0 *section
 	var prev *section
 	files := []*section{}
 	for i, c := range input {
@@ -162,7 +158,7 @@ func part2(input string) {
 		if i%2 == 0 {
 			s := &section{
 				id:    (i / 2),
-				count: num,
+				count: int8(num),
 				prev:  prev,
 			}
 			if s.prev != nil {
@@ -170,23 +166,24 @@ func part2(input string) {
 			}
 			files = append(files, s)
 			prev = s
-			sects[s.id] = s
+			if s.id == 0 {
+				id0 = s
+			}
 		} else {
 			s := &section{
 				id:    -1,
-				count: num,
+				count: int8(num),
 				prev:  prev,
 			}
 			if s.prev != nil {
 				s.prev.next = s
 			}
 			prev = s
-			sects[s.id] = s
 		}
 	}
 	slices.Reverse(files)
 	for _, f := range files {
-		for empty := sects[0]; empty != nil && empty.id != f.id; empty = empty.next {
+		for empty := id0; empty != nil && empty.id != f.id; empty = empty.next {
 			if empty.id != -1 {
 				continue
 			}
@@ -197,18 +194,15 @@ func part2(input string) {
 					next:  f.next,
 					prev:  f.prev,
 				}
-				oldEmptyPrev := empty.prev
 				empty.count -= f.count
+				f.prev.next = newEmptyReplacement
+				f.prev = empty.prev
+				f.prev.next = f
 				empty.prev = f
-				oldFPrev := f.prev
-				oldFPrev.next = newEmptyReplacement
-				f.prev = oldEmptyPrev
-				oldFNext := f.next
-				f.next = empty
-				if oldFNext != nil {
-					oldFNext.prev = newEmptyReplacement
+				if f.next != nil {
+					f.next.prev = newEmptyReplacement
 				}
-				oldEmptyPrev.next = f
+				f.next = empty
 				break
 			} else if empty.count == f.count {
 				empty.id = f.id
@@ -219,10 +213,10 @@ func part2(input string) {
 	}
 	pos := 0
 	s := 0
-	curr := sects[0]
+	curr := id0
 	for curr != nil {
 		if curr.id == -1 {
-			pos += curr.count
+			pos += int(curr.count)
 		} else {
 			for range curr.count {
 				s += int(curr.id) * pos
