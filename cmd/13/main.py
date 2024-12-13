@@ -1,7 +1,7 @@
 import os
 from typing import NamedTuple
 import numpy as np
-from scipy.optimize import milp, LinearConstraint, linprog
+from scipy.optimize import milp, LinearConstraint, linprog, Bounds
 from argparse import ArgumentParser
 
 '''
@@ -49,43 +49,32 @@ with open(os.path.join(THIS_DIR, '..','..','pkg','inputs','puzzle_inputs',day,fn
     claws.append(Claw(A,B,P))
 
 
-def solve(A, B, P):
-    c = np.array([3,1])
-    b_u = np.array(P)
-    b_l = np.array(P)
-    A = np.array([[A[0], B[0]], [A[1], B[1]]])
-    constraints = LinearConstraint(A, b_l, b_u, keep_feasible=False)
-    integrality = np.ones_like(c)
-    res = milp(c=c, constraints=constraints, integrality=integrality)
+def solve(A, B, P, bounds=None):
+    res = linprog(
+        method='highs',
+        c=[3,1],
+        A_eq=list(zip(A,B)),
+        b_eq=P,
+        bounds=bounds, 
+        integrality=[1, 1],
+        options={'presolve': False},
+    )
     if res.x is None:
-        return None
-    if res.x[0] > 100 or res.x[1] > 100:
         return None
     return res.fun
 
 def part1():
     s = 0
     for claw in claws:
-        c = solve(claw.A, claw.B, claw.P)
+        c = solve(claw.A, claw.B, claw.P, bounds=(0, 100))
         if c is not None:
             s += c
     print(f"Part 1: {s}")
 
-
-def solvep2(A, B, P):
-    c = np.array([3,1])
-    Ar = np.array([[A[0], B[0]], [A[1], B[1]]])
-    integrality = np.ones_like(c)
-    res = linprog(method='highs', c=c, A_eq=Ar, b_eq=[10000000000000 + p for p in P], integrality=integrality, options={'presolve': False})
-    if res.x is None:
-        return None
-    return res.fun
-
-
 def part2():
     s = 0
     for claw in claws:
-        c = solvep2(claw.A, claw.B, claw.P)
+        c = solve(claw.A, claw.B, [10000000000000 + p for p in claw.P])
         if c is not None:
             s += c
     print(f"Part 2: {s}")
