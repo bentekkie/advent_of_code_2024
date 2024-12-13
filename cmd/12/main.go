@@ -77,35 +77,24 @@ const (
 )
 
 type side struct {
-	a, b   complex128
-	inside complex128
-	dir    Dir
+	in, out complex128
 }
 
-func newSide(a, b, inside complex128) side {
-	if real(a) == real(b) {
-		if imag(a) < imag(b) {
-			return side{a, b, inside, V}
-		} else {
-			return side{b, a, inside, V}
-		}
-	} else {
-		if real(a) < real(b) {
-			return side{a, b, inside, H}
-		} else {
-			return side{b, a, inside, H}
-		}
+func (s side) dir() Dir {
+	if real(s.in) == real(s.out) {
+		return V
 	}
+	return H
 }
 
 func (s side) nextTo(o side) bool {
-	if s.dir != o.dir {
+	if s.dir() != o.dir() {
 		return false
 	}
-	if s.dir == H {
-		return (s.a == o.a+1i && s.b == o.b+1i && s.inside == o.inside+1i) || (s.a == o.a-1i && s.b == o.b-1i && s.inside == o.inside-1i)
+	if s.dir() == H {
+		return (s.in == o.in+1i && s.out == o.out+1i) || (s.in == o.in-1i && s.out == o.out-1i)
 	} else {
-		return (s.a == o.a+1 && s.b == o.b+1 && s.inside == o.inside+1) || (s.a == o.a-1 && s.b == o.b-1 && s.inside == o.inside-1)
+		return (s.in == o.in+1 && s.out == o.out+1) || (s.in == o.in-1 && s.out == o.out-1)
 	}
 }
 
@@ -144,16 +133,16 @@ func part2(input *inputs.Grid) {
 		sides := map[side]struct{}{}
 		for loc := range compLocs {
 			if _, ok := compLocs[loc-1]; !ok {
-				sides[newSide(loc, loc-1, loc)] = struct{}{}
+				sides[side{in: loc, out: loc - 1}] = struct{}{}
 			}
 			if _, ok := compLocs[loc+1]; !ok {
-				sides[newSide(loc, loc+1, loc)] = struct{}{}
+				sides[side{in: loc, out: loc + 1}] = struct{}{}
 			}
 			if _, ok := compLocs[loc-1i]; !ok {
-				sides[newSide(loc, loc-1i, loc)] = struct{}{}
+				sides[side{in: loc, out: loc - 1i}] = struct{}{}
 			}
 			if _, ok := compLocs[loc+1i]; !ok {
-				sides[newSide(loc, loc+1i, loc)] = struct{}{}
+				sides[side{in: loc, out: loc + 1i}] = struct{}{}
 			}
 		}
 		sg := simple.NewUndirectedGraph()

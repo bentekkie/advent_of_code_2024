@@ -31,3 +31,6 @@ session.txt
 # visualizations
 *.gif
 *.png
+
+# Python venv
+.venv
