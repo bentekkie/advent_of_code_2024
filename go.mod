@@ -4,6 +4,7 @@ go 1.23.3
 
 require (
 	github.com/billglover/gradient v1.0.0
+	golang.org/x/sync v0.10.0
 	gonum.org/v1/gonum v0.15.1
 )
 
