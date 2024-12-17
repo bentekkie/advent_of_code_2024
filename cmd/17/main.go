@@ -3,7 +3,10 @@ package main
 import (
 	"flag"
 	"fmt"
+	"iter"
+	"maps"
 	"math/big"
+	"slices"
 	"strconv"
 	"strings"
 
@@ -128,7 +131,7 @@ func part1(input string) {
 	fmt.Printf("Part 1: %s\n", joinInts(comp.output))
 }
 
-func check(a *big.Int, mem []int) (bool, int, int, *Computer) {
+func getout(a *big.Int, mem []int) []int {
 	comp := &Computer{
 		regA:   a,
 		regB:   big.NewInt(int64(0)),
@@ -136,31 +139,23 @@ func check(a *big.Int, mem []int) (bool, int, int, *Computer) {
 		memory: mem,
 	}
 	comp.run()
-	for i, n := range mem {
-		if i >= len(comp.output) || comp.output[i] != n {
-			return false, i, len(comp.output), comp
-		}
-	}
-	return true, len(comp.output), len(comp.output), comp
+	return comp.output
 }
 
-func findCorrectForLen(a *big.Int, iseen int, mem []int) (*big.Int, int) {
-	max := big.NewInt(1 << 19)
-	fmt.Printf("Starting at %v\n", a)
-	for n := big.NewInt(0); n.Cmp(max) < 0; n.Add(n, big.NewInt(1)) {
-		testA := new(big.Int).Set(n)
-		testA.Lsh(testA, uint(a.BitLen()))
-		testA.Add(testA, a)
-		cpy := new(big.Int).Set(testA)
-		ok, i, l, _ := check(cpy, mem)
-		if ok {
-			return testA, i
-		}
-		if i > iseen && l == i && i != 15 {
-			return testA, i
+func nextValid(a *big.Int, mem []int, want []int) iter.Seq[int64] {
+	return func(yield func(int64) bool) {
+		for n := int64(0); n < 8; n++ {
+			testA := new(big.Int).Mul(a, eight)
+			testA.Add(testA, big.NewInt(n))
+			cpy := new(big.Int).Set(testA)
+			out := getout(cpy, mem)
+			if slices.Equal(out, want) {
+				if yield(testA.Int64()) {
+					return
+				}
+			}
 		}
 	}
-	panic("err")
 }
 
 func part2(input string) {
@@ -170,24 +165,25 @@ func part2(input string) {
 	for i, s := range memStr {
 		mem[i] = mustParseInt(s)
 	}
-	maxi := 0
-	a := big.NewInt(7)
-	for maxi < len(mem) {
-		a, maxi = findCorrectForLen(a, maxi, mem)
-		fmt.Printf("a=%v maxi=%v %s\n", a, maxi, bitstring(a))
+	nss := []map[int64]struct{}{{0: {}}}
+	for k := range mem {
+		ns := map[int64]struct{}{}
+		for n := range nss[len(nss)-1] {
+			for next := range nextValid(big.NewInt(n), mem, mem[len(mem)-1-k:]) {
+				ns[next] = struct{}{}
+			}
+		}
+		nss = append(nss, ns)
 	}
-	fmt.Printf("Part 2: %v", a)
-
+	fmt.Printf("Part 2: %v\n", min(slices.Collect(maps.Keys(nss[len(nss)-1]))...))
 }
 
-func bitstring(n *big.Int) string {
-	var sb strings.Builder
-	for i := range n.BitLen() {
-		if n.Bit(n.BitLen()-1-i) == 1 {
-			sb.WriteRune('1')
-		} else {
-			sb.WriteRune('0')
+func min[T ~int64](a ...T) T {
+	min := a[0]
+	for _, v := range a[1:] {
+		if v < min {
+			min = v
 		}
 	}
-	return sb.String()
+	return min
 }
