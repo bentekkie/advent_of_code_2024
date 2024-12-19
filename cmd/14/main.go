@@ -4,10 +4,10 @@ import (
 	"flag"
 	"fmt"
 	"iter"
-	"strconv"
 	"strings"
 
 	"github.com/bentekkie/advent_of_code_2024/pkg/inputs"
+	"github.com/bentekkie/advent_of_code_2024/pkg/parse"
 )
 
 func main() {
@@ -47,14 +47,6 @@ func (p Point) quadrant(max Point) int {
 	return 0
 }
 
-func mustParseInt(s string) int64 {
-	n, err := strconv.ParseInt(s, 10, 64)
-	if err != nil {
-		panic(err)
-	}
-	return n
-}
-
 func part1(input iter.Seq[string]) {
 	robotMap := map[Point][]Velocity{}
 	for line := range input {
@@ -62,10 +54,11 @@ func part1(input iter.Seq[string]) {
 		if len(parts) != 2 {
 			continue
 		}
-		pparts := strings.Split(strings.TrimPrefix(parts[0], "p="), ",")
-		vparts := strings.Split(strings.TrimPrefix(parts[1], "v="), ",")
-		p := Point{mustParseInt(pparts[0]), mustParseInt(pparts[1])}
-		v := Velocity{mustParseInt(vparts[0]), mustParseInt(vparts[1])}
+
+		pparts := parse.NumList[int64](strings.TrimPrefix(parts[0], "p="), ",")
+		vparts := parse.NumList[int64](strings.TrimPrefix(parts[1], "v="), ",")
+		p := Point{pparts[0], pparts[1]}
+		v := Velocity{vparts[0], vparts[1]}
 		robotMap[p] = append(robotMap[p], v)
 	}
 	max := Point{101, 103}
@@ -149,10 +142,10 @@ func part2(input iter.Seq[string]) {
 		if len(parts) != 2 {
 			continue
 		}
-		pparts := strings.Split(strings.TrimPrefix(parts[0], "p="), ",")
-		vparts := strings.Split(strings.TrimPrefix(parts[1], "v="), ",")
-		p := Point{mustParseInt(pparts[0]), mustParseInt(pparts[1])}
-		v := Velocity{mustParseInt(vparts[0]), mustParseInt(vparts[1])}
+		pparts := parse.NumList[int64](strings.TrimPrefix(parts[0], "p="), ",")
+		vparts := parse.NumList[int64](strings.TrimPrefix(parts[1], "v="), ",")
+		p := Point{pparts[0], pparts[1]}
+		v := Velocity{vparts[0], vparts[1]}
 		robotMap[p] = append(robotMap[p], v)
 	}
 	max := Point{101, 103}

@@ -11,6 +11,7 @@ import (
 	"strings"
 
 	"github.com/bentekkie/advent_of_code_2024/pkg/inputs"
+	"github.com/bentekkie/advent_of_code_2024/pkg/parse"
 )
 
 func main() {
@@ -96,13 +97,6 @@ func exp2big(n *big.Int) *big.Int {
 	return new(big.Int).Exp(two, n, nil)
 }
 
-func mustParseInt(s string) int {
-	n, err := strconv.Atoi(s)
-	if err != nil {
-		panic(err)
-	}
-	return n
-}
 func joinInts(nums []int) string {
 	strs := make([]string, len(nums))
 	for i, n := range nums {
@@ -113,18 +107,14 @@ func joinInts(nums []int) string {
 
 func part1(input string) {
 	lines := strings.Split(input, "\n")
-	a := mustParseInt(strings.TrimPrefix(lines[0], "Register A: "))
-	b := mustParseInt(strings.TrimPrefix(lines[1], "Register B: "))
-	c := mustParseInt(strings.TrimPrefix(lines[2], "Register C: "))
-	memStr := strings.Split(strings.TrimPrefix(lines[4], "Program: "), ",")
-	mem := make([]int, len(memStr))
-	for i, s := range memStr {
-		mem[i] = mustParseInt(s)
-	}
+	a := parse.MustAtoi[int64](strings.TrimPrefix(lines[0], "Register A: "))
+	b := parse.MustAtoi[int64](strings.TrimPrefix(lines[1], "Register B: "))
+	c := parse.MustAtoi[int64](strings.TrimPrefix(lines[2], "Register C: "))
+	mem := parse.NumList[int](strings.TrimPrefix(lines[4], "Program: "), ",")
 	comp := &Computer{
-		regA:   big.NewInt(int64(a)),
-		regB:   big.NewInt(int64(b)),
-		regC:   big.NewInt(int64(c)),
+		regA:   big.NewInt(a),
+		regB:   big.NewInt(b),
+		regC:   big.NewInt(c),
 		memory: mem,
 	}
 	comp.run()
@@ -160,11 +150,7 @@ func nextValid(a *big.Int, mem []int, want []int) iter.Seq[int64] {
 
 func part2(input string) {
 	lines := strings.Split(input, "\n")
-	memStr := strings.Split(strings.TrimPrefix(lines[4], "Program: "), ",")
-	mem := make([]int, len(memStr))
-	for i, s := range memStr {
-		mem[i] = mustParseInt(s)
-	}
+	mem := parse.NumList[int](strings.TrimPrefix(lines[4], "Program: "), ",")
 	nss := []map[int64]struct{}{{0: {}}}
 	for k := range mem {
 		ns := map[int64]struct{}{}
