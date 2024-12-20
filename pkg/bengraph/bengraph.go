@@ -35,3 +35,11 @@ func DataToNodes[T comparable](g graph.Graph) map[T]*Node[T] {
 	}
 	return nodes
 }
+
+func Path[T comparable](p []graph.Node) []*Node[T] {
+	data := make([]*Node[T], len(p))
+	for i, n := range p {
+		data[i] = n.(*Node[T])
+	}
+	return data
+}
