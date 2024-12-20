@@ -9,7 +9,6 @@ import (
 	"github.com/bentekkie/advent_of_code_2024/pkg/bengraph"
 	"github.com/bentekkie/advent_of_code_2024/pkg/inputs"
 	"gonum.org/v1/gonum/graph/path"
-	"gonum.org/v1/gonum/graph/simple"
 )
 
 func main() {
@@ -23,7 +22,6 @@ var dirs = [4]complex128{1, -1, 1i, -1i}
 func part1(input *inputs.Grid) {
 	var start, end complex128
 	walls := map[complex128]struct{}{}
-	g := simple.NewUndirectedGraph()
 	for loc, c := range input.Locs() {
 		if c == 'S' {
 			start = loc
@@ -34,21 +32,14 @@ func part1(input *inputs.Grid) {
 		if c == '#' {
 			walls[loc] = struct{}{}
 		}
-		if c == 'S' || c == 'E' || c == '.' {
-			g.AddNode(bengraph.NewNode(g.NewNode(), loc))
-		}
 	}
-	nodes := bengraph.DataToNodes[complex128](g)
-	for loc, n := range nodes {
-		for _, d := range dirs {
-			if o, ok := nodes[loc+d]; ok {
-				g.SetEdge(simple.Edge{F: n, T: o})
-			}
-		}
+	g := &bengraph.Grid{
+		Missing: walls,
+		Max:     input.Max(),
 	}
-	allFromStart := path.DijkstraFrom(nodes[start], g)
-	allFromEnd := path.DijkstraFrom(nodes[end], g)
-	p, w := allFromStart.To(nodes[end].ID())
+	allFromStart := path.DijkstraFrom(g.Node(start), g)
+	allFromEnd := path.DijkstraFrom(g.Node(end), g)
+	p, w := allFromStart.To(g.LocToID(end))
 	s := 0
 	for _, n := range bengraph.Path[complex128](p) {
 		for _, d := range dirs {
@@ -56,7 +47,7 @@ func part1(input *inputs.Grid) {
 			if _, ok := walls[wall]; ok {
 				for _, d := range dirs {
 					next := wall + d
-					if nextNode, ok := nodes[next]; ok && next != n.Data {
+					if nextNode := g.Node(next); nextNode != nil && next != n.Data {
 						dist := allFromStart.WeightTo(n.ID()) + allFromEnd.WeightTo(nextNode.ID()) + 2
 						if dist <= w-100 {
 							s++
@@ -72,7 +63,6 @@ func part1(input *inputs.Grid) {
 func part2(input *inputs.Grid) {
 	var start, end complex128
 	walls := map[complex128]struct{}{}
-	g := simple.NewUndirectedGraph()
 	for loc, c := range input.Locs() {
 		if c == 'S' {
 			start = loc
@@ -83,25 +73,18 @@ func part2(input *inputs.Grid) {
 		if c == '#' {
 			walls[loc] = struct{}{}
 		}
-		if c == 'S' || c == 'E' || c == '.' {
-			g.AddNode(bengraph.NewNode(g.NewNode(), loc))
-		}
 	}
-	nodes := bengraph.DataToNodes[complex128](g)
-	for loc, n := range nodes {
-		for _, d := range dirs {
-			if o, ok := nodes[loc+d]; ok {
-				g.SetEdge(simple.Edge{F: n, T: o})
-			}
-		}
+	g := &bengraph.Grid{
+		Missing: walls,
+		Max:     input.Max(),
 	}
-	allFromStart := path.DijkstraFrom(nodes[start], g)
-	allFromEnd := path.DijkstraFrom(nodes[end], g)
-	p, w := allFromStart.To(nodes[end].ID())
+	allFromStart := path.DijkstraFrom(g.Node(start), g)
+	allFromEnd := path.DijkstraFrom(g.Node(end), g)
+	p, w := allFromStart.To(g.LocToID(end))
 	s := 0
 	for _, n := range bengraph.Path[complex128](p) {
 		for next := range around(n.Data, 21) {
-			if nextNode, ok := nodes[next]; ok && next != n.Data {
+			if nextNode := g.Node(next); nextNode != nil && next != n.Data {
 				dist := allFromStart.WeightTo(n.ID()) + allFromEnd.WeightTo(nextNode.ID()) + cdist(n.Data, next)
 				if dist <= w-100 {
 					s++
