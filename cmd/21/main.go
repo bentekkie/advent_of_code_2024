@@ -218,13 +218,13 @@ func padPaths(keys map[rune]complex128) map[Move][]string {
 					next := n.(*bengraph.Node[complex128]).Data
 					switch next - curr {
 					case 1:
-						sb.WriteString(">")
+						sb.WriteRune('>')
 					case -1:
-						sb.WriteString("<")
+						sb.WriteRune('<')
 					case 1i:
-						sb.WriteString("v")
+						sb.WriteRune('v')
 					case -1i:
-						sb.WriteString("^")
+						sb.WriteRune('^')
 					}
 					curr = next
 				}
