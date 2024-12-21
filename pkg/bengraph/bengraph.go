@@ -48,8 +48,10 @@ func Path[T comparable](p []graph.Node) []*Node[T] {
 }
 
 type Grid struct {
-	Missing map[complex128]struct{}
-	Max     complex128
+	Missing    map[complex128]struct{}
+	validCache map[complex128]bool
+	Max        complex128
+	nodeCache  map[complex128]*Node[complex128]
 }
 
 var _ traverse.Graph = (*Grid)(nil)
@@ -68,15 +70,30 @@ func (g *Grid) Node(loc complex128) graph.Node {
 	if !g.valid(loc) {
 		return nil
 	}
-	return NewNode(simple.Node(g.LocToID(loc)), loc)
+	if g.nodeCache == nil {
+		g.nodeCache = map[complex128]*Node[complex128]{}
+	}
+	if n, ok := g.nodeCache[loc]; ok {
+		return n
+	}
+	g.nodeCache[loc] = NewNode(simple.Node(g.LocToID(loc)), loc)
+	return g.nodeCache[loc]
 }
 
 func (g *Grid) valid(loc complex128) bool {
+	if g.validCache == nil {
+		g.validCache = map[complex128]bool{}
+	}
+	if v, ok := g.validCache[loc]; ok {
+		return v
+	}
 	if real(loc) >= 0 && real(loc) <= real(g.Max) && imag(loc) >= 0 && imag(loc) <= imag(g.Max) {
 		if _, ok := g.Missing[loc]; !ok {
+			g.validCache[loc] = true
 			return true
 		}
 	}
+	g.validCache[loc] = false
 	return false
 }
 

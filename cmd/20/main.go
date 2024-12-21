@@ -7,12 +7,14 @@ import (
 	"math"
 
 	"github.com/bentekkie/advent_of_code_2024/pkg/bengraph"
+	"github.com/bentekkie/advent_of_code_2024/pkg/flags"
 	"github.com/bentekkie/advent_of_code_2024/pkg/inputs"
 	"gonum.org/v1/gonum/graph/path"
 )
 
 func main() {
 	flag.Parse()
+	defer flags.CPUProfile()()
 	part1(&inputs.Grid{})
 	part2(&inputs.Grid{})
 }
