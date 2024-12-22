@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"iter"
 	"maps"
-	"slices"
+	"math"
 	"strings"
 
 	"github.com/bentekkie/advent_of_code_2024/pkg/bengraph"
@@ -22,8 +22,19 @@ func main() {
 	part2(inputs.Lines())
 }
 
-var keyPadPaths = padPaths(dirKeys)
-var numpadPaths = padPaths(numpadKeys)
+var pp = addMap(padPaths(dirKeys), padPaths(numpadKeys))
+
+func addMap[K comparable, V any](ms ...map[K]V) map[K]V {
+	totalLen := 0
+	for _, m := range ms {
+		totalLen += len(m)
+	}
+	m := make(map[K]V, totalLen)
+	for _, mm := range ms {
+		maps.Copy(m, mm)
+	}
+	return m
+}
 
 func part1(input iter.Seq[string]) {
 	s := 0
@@ -36,26 +47,19 @@ func part1(input iter.Seq[string]) {
 		numPart := parse.MustAtoi[int](line[:len(line)-1])
 		short := minForCode(line, 2, mem)
 		s += short * numPart
+		fmt.Printf("DEBUG mem size: %d\n", len(mem))
 	}
 	fmt.Printf("Part 1: %v\n", s)
 }
 
 func minForCode(code string, keypads int, mem map[expandState]expandStateRet) int {
-	numpaths := slices.Collect(maps.Keys(typeOnPad(code, numpadPaths)))
-	minLen := -1
-	for _, numpath := range numpaths {
-		newMin := typeOnKeyPadLevels(numpath, keypads, mem)
-		if newMin < minLen || minLen == -1 {
-			minLen = newMin
-		}
-	}
-	return minLen
+	return expandCode(code, strings.Repeat("A", keypads+1), mem).minLen
 }
 
 type expandState struct {
-	level int
 	currs string
 	press rune
+	code  string
 }
 
 type expandStateRet struct {
@@ -63,67 +67,37 @@ type expandStateRet struct {
 	currs  string
 }
 
-func expandMove(currs string, press rune, levels int, mem map[expandState]expandStateRet) (int, string) {
-	s := expandState{level: levels, currs: currs, press: press}
-	paths := keyPadPaths[Move{from: rune(currs[0]), to: press}]
-	if _, ok := mem[s]; !ok && levels == 1 {
-		mem[s] = expandStateRet{minLen: len(paths[0]), currs: string(press)}
+func expandMove(s expandState, mem map[expandState]expandStateRet) expandStateRet {
+	paths := pp[Move{from: rune(s.currs[0]), to: s.press}]
+	if _, ok := mem[s]; !ok && len(s.currs) == 1 {
+		mem[s] = expandStateRet{minLen: len(paths[0]), currs: string(s.press)}
 	} else if !ok {
-		ret := expandStateRet{
-			minLen: -1,
-			currs:  "",
-		}
+		ret := expandStateRet{minLen: math.MaxInt64}
 		for _, p := range paths {
-			nextLevelCurr := currs[1:]
-			pMin := 0
-			for _, c := range p {
-				nextMin, nextCurr := expandMove(nextLevelCurr, c, levels-1, mem)
-				pMin += nextMin
-				nextLevelCurr = nextCurr
-				if pMin > ret.minLen && ret.minLen >= 0 {
-					break
-				}
-			}
-			if pMin < ret.minLen || ret.minLen < 0 {
-				ret.minLen = pMin
-				ret.currs = string(press) + nextLevelCurr
+			if next := expandCode(p, s.currs[1:], mem); next.minLen < ret.minLen {
+				ret.minLen = next.minLen
+				ret.currs = next.currs
 			}
 		}
+		ret.currs = string(s.press) + ret.currs
 		mem[s] = ret
 	}
-	return mem[s].minLen, mem[s].currs
+	return mem[s]
 }
 
-func typeOnKeyPadLevels(code string, levels int, mem map[expandState]expandStateRet) int {
-	var sb strings.Builder
-	for range levels {
-		sb.WriteRune('A')
+func expandCode(p string, currs string, mem map[expandState]expandStateRet) expandStateRet {
+	s := expandState{currs: currs, code: p}
+	if ret, ok := mem[s]; ok {
+		return ret
 	}
-	currs := sb.String()
-	min := 0
-	for _, c := range code {
-		newMin, newCurrs := expandMove(currs, c, levels, mem)
-		currs = newCurrs
-		min += newMin
+	ret := expandStateRet{currs: currs}
+	for _, c := range p {
+		next := expandMove(expandState{currs: ret.currs, press: c}, mem)
+		ret.minLen += next.minLen
+		ret.currs = next.currs
 	}
-	return min
-}
-
-func typeOnPad(code string, padPaths map[Move][]string) map[string]struct{} {
-	currButton := 'A'
-	paths := map[string]struct{}{"": {}}
-	for _, c := range code {
-		nextPaths := map[string]struct{}{}
-		newPaths := padPaths[Move{from: currButton, to: c}]
-		for p := range paths {
-			for _, np := range newPaths {
-				nextPaths[p+np] = struct{}{}
-			}
-		}
-		currButton = c
-		paths = nextPaths
-	}
-	return paths
+	mem[s] = ret
+	return mem[s]
 }
 
 func part2(input iter.Seq[string]) {
@@ -137,6 +111,7 @@ func part2(input iter.Seq[string]) {
 		numPart := parse.MustAtoi[int](line[:len(line)-1])
 		short := minForCode(line, 25, mem)
 		s += short * numPart
+		fmt.Printf("DEBUG mem size: %d\n", len(mem))
 	}
 	fmt.Printf("Part 2: %v\n", s)
 }
