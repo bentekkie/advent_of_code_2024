@@ -20,6 +20,36 @@ func main() {
 	part2(inputs.Lines())
 }
 
+func comb(n, k int) iter.Seq[[]int] {
+	return func(yield func([]int) bool) {
+		data := make([]int, k)
+		for i := range data {
+			data[i] = i
+		}
+		if !yield(data) {
+			return
+		}
+		for range combin.Binomial(n, k) - 1 {
+			next := make([]int, k)
+			copy(next, data)
+			for j := k - 1; j >= 0; j-- {
+				if next[j] == n+j-k {
+					continue
+				}
+				next[j]++
+				for l := j + 1; l < k; l++ {
+					next[l] = next[j] + l - j
+				}
+				break
+			}
+			if !yield(next) {
+				return
+			}
+			data = next
+		}
+	}
+}
+
 func part1(input iter.Seq[string]) {
 	g := simple.NewUndirectedGraph()
 	compNames := map[string]*bengraph.Node[string]{}
@@ -48,7 +78,7 @@ func part1(input iter.Seq[string]) {
 		if len(ns) < 3 {
 			continue
 		}
-		for _, idxs := range combin.Combinations(len(ns), 3) {
+		for idxs := range comb(len(ns), 3) {
 			ns := []string{
 				ns[idxs[0]].(*bengraph.Node[string]).Data,
 				ns[idxs[1]].(*bengraph.Node[string]).Data,

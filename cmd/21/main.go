@@ -6,6 +6,7 @@ import (
 	"iter"
 	"maps"
 	"math"
+	"slices"
 	"strings"
 
 	"github.com/bentekkie/advent_of_code_2024/pkg/bengraph"
@@ -38,78 +39,63 @@ func addMap[K comparable, V any](ms ...map[K]V) map[K]V {
 
 func part1(input iter.Seq[string]) {
 	s := 0
-	mem := map[expandState]expandStateRet{}
+	mem := map[expandState]int{}
 	for line := range input {
 		line := strings.TrimSpace(line)
 		if line == "" {
 			continue
 		}
 		numPart := parse.MustAtoi[int](line[:len(line)-1])
-		short := minForCode(line, 2, mem)
+		short := expandCode(line, 3, mem)
 		s += short * numPart
 		fmt.Printf("DEBUG mem size: %d\n", len(mem))
 	}
 	fmt.Printf("Part 1: %v\n", s)
 }
 
-func minForCode(code string, keypads int, mem map[expandState]expandStateRet) int {
-	return expandCode(code, strings.Repeat("A", keypads+1), mem).minLen
-}
-
 type expandState struct {
-	currs string
-	press rune
 	code  string
+	level int8
 }
 
-type expandStateRet struct {
-	minLen int
-	currs  string
-}
-
-func expandMove(s expandState, mem map[expandState]expandStateRet) expandStateRet {
-	paths := pp[Move{from: rune(s.currs[0]), to: s.press}]
-	if _, ok := mem[s]; !ok && len(s.currs) == 1 {
-		mem[s] = expandStateRet{minLen: len(paths[0]), currs: string(s.press)}
-	} else if !ok {
-		ret := expandStateRet{minLen: math.MaxInt64}
-		for _, p := range paths {
-			if next := expandCode(p, s.currs[1:], mem); next.minLen < ret.minLen {
-				ret.minLen = next.minLen
-				ret.currs = next.currs
-			}
-		}
-		ret.currs = string(s.press) + ret.currs
-		mem[s] = ret
+func expandMove(m Move, level int8, mem map[expandState]int) int {
+	if level == 1 {
+		return len(pp[m][0])
 	}
-	return mem[s]
+	min := math.MaxInt
+	for _, p := range pp[m] {
+		if nextMin := expandCode(p, level-1, mem); nextMin < min {
+			min = nextMin
+		}
+	}
+	return min
 }
 
-func expandCode(p string, currs string, mem map[expandState]expandStateRet) expandStateRet {
-	s := expandState{currs: currs, code: p}
+func expandCode(p string, level int8, mem map[expandState]int) int {
+	s := expandState{level: level, code: p}
 	if ret, ok := mem[s]; ok {
 		return ret
 	}
-	ret := expandStateRet{currs: currs}
+	min := 0
+	curr := 'A'
 	for _, c := range p {
-		next := expandMove(expandState{currs: ret.currs, press: c}, mem)
-		ret.minLen += next.minLen
-		ret.currs = next.currs
+		min += expandMove(Move{from: runeidx[curr], to: runeidx[c]}, level, mem)
+		curr = c
 	}
-	mem[s] = ret
+	mem[s] = min
 	return mem[s]
 }
 
 func part2(input iter.Seq[string]) {
 	s := 0
-	mem := map[expandState]expandStateRet{}
+	mem := map[expandState]int{}
 	for line := range input {
 		line := strings.TrimSpace(line)
 		if line == "" {
 			continue
 		}
 		numPart := parse.MustAtoi[int](line[:len(line)-1])
-		short := minForCode(line, 25, mem)
+		short := expandCode(line, 26, mem)
 		s += short * numPart
 		fmt.Printf("DEBUG mem size: %d\n", len(mem))
 	}
@@ -128,6 +114,24 @@ func part2(input iter.Seq[string]) {
 	| 0 | A |
 	+---+---+
 */
+
+type runeid byte
+
+func genRuneIDX(ms ...iter.Seq[rune]) map[rune]runeid {
+	idx := map[rune]runeid{}
+	for _, m := range ms {
+		for r := range m {
+			if _, ok := idx[r]; ok {
+				continue
+			}
+			idx[r] = runeid(len(idx))
+		}
+	}
+	return idx
+}
+
+var runeidx = genRuneIDX(maps.Keys(numpadKeys), maps.Keys(dirKeys))
+
 var numpadKeys = map[rune]complex128{
 	'7': 0 + 0i, '8': 1 + 0i, '9': 2 + 0i,
 	'4': 0 + 1i, '5': 1 + 1i, '6': 2 + 1i,
@@ -151,11 +155,15 @@ var dirKeys = map[rune]complex128{
 var dirs = [4]complex128{1, -1, 1i, -1i}
 
 type Move struct {
-	from, to rune
+	from, to runeid
 }
 
 func (m Move) String() string {
 	return fmt.Sprintf("'%c'->'%c'", m.from, m.to)
+}
+
+type bounds struct {
+	max, min int8
 }
 
 func padPaths(keys map[rune]complex128) map[Move][]string {
@@ -181,7 +189,7 @@ func padPaths(keys map[rune]complex128) map[Move][]string {
 	for from := range keys {
 		for to := range keys {
 			if from == to {
-				pathStrs[Move{from, to}] = []string{"A"}
+				pathStrs[Move{runeidx[from], runeidx[to]}] = []string{"A"}
 				continue
 			}
 			ps, _ := paths.AllBetween(nodesByKey[from].ID(), nodesByKey[to].ID())
@@ -206,7 +214,60 @@ func padPaths(keys map[rune]complex128) map[Move][]string {
 				sb.WriteRune('A')
 				strPs = append(strPs, sb.String())
 			}
-			pathStrs[Move{from, to}] = strPs
+			repeats := map[string]bounds{}
+			for _, ps := range strPs {
+				cnt := int8(1)
+				curr := rune(ps[0])
+				var maxRepeat int8
+				minRepeat := int8(math.MaxInt8)
+				for _, c := range ps[1 : len(ps)-1] {
+					if c == curr {
+						cnt++
+					} else {
+						if cnt > maxRepeat {
+							maxRepeat = cnt
+						}
+						if cnt < minRepeat {
+							minRepeat = cnt
+						}
+						cnt = 1
+					}
+					curr = c
+				}
+				if cnt > maxRepeat {
+					maxRepeat = cnt
+				}
+				if cnt < minRepeat {
+					minRepeat = cnt
+				}
+				repeats[ps] = bounds{
+					max: maxRepeat,
+					min: minRepeat,
+				}
+			}
+			var maxRepeat int8
+			for _, b := range repeats {
+				if b.max > maxRepeat {
+					maxRepeat = b.max
+				}
+			}
+			for key, b := range repeats {
+				if b.max != maxRepeat {
+					delete(repeats, key)
+				}
+			}
+			var maxMin int8
+			for _, b := range repeats {
+				if b.min > maxMin {
+					maxMin = b.min
+				}
+			}
+			for key, b := range repeats {
+				if b.min != maxMin {
+					delete(repeats, key)
+				}
+			}
+			pathStrs[Move{runeidx[from], runeidx[to]}] = slices.Collect(maps.Keys(repeats))
 		}
 	}
 	return pathStrs
