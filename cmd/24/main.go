@@ -4,6 +4,7 @@ import (
 	_ "embed"
 	"flag"
 	"fmt"
+	"iter"
 	"maps"
 	"slices"
 	"strings"
@@ -138,6 +139,20 @@ func (g *XOr) Set() bool {
 	return true
 }
 
+func iter2d[T any](it iter.Seq[T]) iter.Seq2[T, T] {
+	return func(yield func(T, T) bool) {
+		prev := []T{}
+		for v1 := range it {
+			for _, v2 := range prev {
+				if !yield(v1, v2) {
+					return
+				}
+			}
+			prev = append(prev, v1)
+		}
+	}
+}
+
 func part1(input string) {
 	parts := strings.Split(strings.TrimSpace(input), "\n\n")
 	gates := map[string]Gate{}
@@ -215,39 +230,21 @@ func part2(input string) {
 	}
 	correct := 1
 	swaps := [][]string{}
-	canSwap := slices.Collect(maps.Keys(infos))
-	usedCorrect := map[string]struct{}{}
+	k := 0
 	for correct < 45 {
 		checkCorrect, usedTotal := correctUpTo(infos)
 		correct = checkCorrect
 		if correct < 45 {
-			found := false
-			for s1 := range usedTotal {
-				if _, ok := usedCorrect[s1]; ok {
-					continue
-				}
-				if found {
+			for s1, s2 := range iter2d(usedTotal.InOrder()) {
+				swap(infos, s1, s2)
+				k++
+				testCorrect, _ := correctUpTo(infos)
+				if testCorrect > correct {
+					correct = testCorrect
+					swaps = append(swaps, []string{s1, s2})
 					break
 				}
-				for _, s2 := range canSwap {
-					if _, ok := usedCorrect[s2]; ok {
-						continue
-					}
-					swap(infos, s1, s2)
-					testCorrect, _ := correctUpTo(infos)
-					if testCorrect > correct {
-						correct = testCorrect
-						swaps = append(swaps, []string{s1, s2})
-						found = true
-						usedCorrect = usedTotal
-						break
-					}
-					swap(infos, s1, s2)
-
-				}
-			}
-			if !found {
-				panic("aaaaa")
+				swap(infos, s1, s2)
 			}
 		}
 	}
@@ -256,7 +253,7 @@ func part2(input string) {
 		names = append(names, swap...)
 	}
 	slices.Sort(names)
-	fmt.Printf("Part 2: %s\n", strings.Join(names, ","))
+	fmt.Printf("Part 2: %d %s\n", k, strings.Join(names, ","))
 }
 
 func swap(infos map[string]gateInfo, a, b string) {
@@ -276,14 +273,11 @@ var (
 	ys = genLbls("y", 50)
 )
 
-func correctUpTo(infos map[string]gateInfo) (int, map[string]struct{}) {
+func correctUpTo(infos map[string]gateInfo) (int, usedMap) {
 	cin, _ := findWithInputs(xs[0], ys[0], "AND", infos)
-	used := make(map[string]struct{}, len(infos))
+	used := make(map[string]int, len(infos))
 	for bit := 1; bit < 45; bit++ {
-		cout, _, usedStep, err := findCout(xs[bit], ys[bit], cin, infos)
-		for _, name := range usedStep {
-			used[name] = struct{}{}
-		}
+		cout, err := findCout(xs[bit], ys[bit], cin, infos, used)
 		if err != nil {
 			return bit, used
 		}
@@ -309,32 +303,57 @@ func findWithInputs(a, b, t string, gates map[string]gateInfo) (string, bool) {
 	return "", false
 }
 
-func findCout(x, y, cin string, gates map[string]gateInfo) (string, string, []string, error) {
-	used := []string{x, y, cin}
+type usedMap map[string]int
+
+func (u usedMap) Add(s string) bool {
+	if _, ok := u[s]; ok {
+		return false
+	}
+	u[s] = len(u)
+	return true
+}
+
+func (u usedMap) InOrder() iter.Seq[string] {
+	return func(yield func(string) bool) {
+		byVal := map[int]string{}
+		for k, v := range u {
+			byVal[v] = k
+		}
+		keys := slices.Sorted(maps.Keys(byVal))
+		slices.Reverse(keys)
+		for _, k := range keys {
+			if !yield(byVal[k]) {
+				return
+			}
+		}
+	}
+}
+
+func findCout(x, y, cin string, gates map[string]gateInfo, used usedMap) (string, error) {
 	xor1, found := findWithInputs(x, y, "XOR", gates)
 	if !found {
-		return "", "", used, fmt.Errorf("unable to find xor1")
+		return "", fmt.Errorf("unable to find xor1")
 	}
-	used = append(used, xor1)
+	used.Add(xor1)
 	and1, found := findWithInputs(x, y, "AND", gates)
 	if !found {
-		return "", "", used, fmt.Errorf("unable to find and1")
+		return "", fmt.Errorf("unable to find and1")
 	}
-	used = append(used, and1)
+	used.Add(and1)
 	out, found := findWithInputs(cin, xor1, "XOR", gates)
 	if !found {
-		return "", "", used, fmt.Errorf("unable to find out")
+		return "", fmt.Errorf("unable to find out")
 	}
-	used = append(used, and1)
+	used.Add(out)
 	and2, found := findWithInputs(cin, xor1, "AND", gates)
 	if !found {
-		return "", "", used, fmt.Errorf("unable to find and2")
+		return "", fmt.Errorf("unable to find and2")
 	}
-	used = append(used, and2)
+	used.Add(and2)
 	cout, found := findWithInputs(and1, and2, "OR", gates)
 	if !found {
-		return "", "", used, fmt.Errorf("unable to find cout")
+		return "", fmt.Errorf("unable to find cout")
 	}
-	used = append(used, cout)
-	return cout, out, used, nil
+	used.Add(cout)
+	return cout, nil
 }
